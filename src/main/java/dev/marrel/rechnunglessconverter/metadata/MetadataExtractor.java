@@ -1,8 +1,8 @@
 package dev.marrel.rechnunglessconverter.metadata;
 
-import org.mustangproject.ZUGFeRD.XRechnungImporter;
+import org.mustangproject.ZUGFeRD.ZUGFeRDImporter;
 
 @FunctionalInterface
 public interface MetadataExtractor {
-    String getValue(XRechnungImporter xrechung);
+    String getValue(ZUGFeRDImporter xrechung);
 }

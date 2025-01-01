@@ -2,20 +2,24 @@ package dev.marrel.rechnunglessconverter;
 
 import dev.marrel.rechnunglessconverter.util.XMLTools;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.util.ArrayList;
+import java.util.List;
+
 
 public class ValidationResult {
-    private boolean isValid;
-    private ArrayList<String> reasons;
+
+    private boolean isValid = false;
+
+    private List<ValidationMessage> messages = new ArrayList<>();
+
 
     public ValidationResult(String mustangValidationXml) {
-        reasons = new ArrayList<>();
-
         Element e = XMLTools.parseStringXML(mustangValidationXml);
 
         XPathFactory xPathFactory = XPathFactory.newInstance();
@@ -26,22 +30,28 @@ public class ValidationResult {
             throw new RuntimeException(ex);
         }
 
-        if(!isValid) {
-            NodeList messageNodes = e.getElementsByTagName("messages");
-            for(int i=0; i< messageNodes.getLength(); i++) {
-                Element messageElement = (Element) messageNodes.item(i);
-                NodeList errorNodes = messageElement.getElementsByTagName("error");
-                for(int k=0; k<errorNodes.getLength(); k++) {
-                    Element errorElement = (Element) errorNodes.item(k);
-                    StringBuilder sb = new StringBuilder();
-                    if(errorElement.hasAttribute("type")) sb.append("type=\"").append(errorElement.getAttribute("type")).append("\"; ");
-                    if(errorElement.hasAttribute("location")) sb.append("location=\"").append(errorElement.getAttribute("location")).append("\"; ");
-                    if(errorElement.hasAttribute("criterion")) sb.append("criterion=\"").append(errorElement.getAttribute("criterion")).append("\"; ");
-                    sb.append(errorElement.getTextContent());
-                    reasons.add(sb.toString());
+        NodeList messageContainers = e.getElementsByTagName("messages");
+        for (int i = 0; i < messageContainers.getLength(); i++) {
+            Node messageContainer = messageContainers.item(i);
+            NodeList messageItems = messageContainer.getChildNodes();
+            for (int k = 0; k < messageItems.getLength(); k++) {
+                Node messageItem = messageItems.item(k);
+                if ("#text".equals(messageItem.getNodeName())) {
+                    continue;
+                }
+                ValidationMessage validationMessage = new ValidationMessage()
+                        .setLevel(messageItem.getNodeName())
+                        .setMessage(messageItem.getTextContent().trim());
+                if (messageItem instanceof Element messageElement) {
+                    validationMessage
+                            .setCriterion(messageElement.getAttribute("criterion"))
+                            .setLocation(messageElement.getAttribute("location"))
+                            .setType(messageElement.getAttribute("type"));
+                }
+                if (!validationMessage.getMessage().isBlank()) {
+                    messages.add(validationMessage);
                 }
             }
-
         }
     }
 
@@ -50,7 +60,8 @@ public class ValidationResult {
         return isValid;
     }
 
-    public ArrayList<String> getReasons() {
-        return reasons;
+
+    public List<ValidationMessage> getMessages() {
+        return messages;
     }
 }
